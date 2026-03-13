@@ -15,7 +15,7 @@ const BrowseRequests = () => {
   useEffect(() => {
     const fetchRequests = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/users/open-requests', {
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/open-requests`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setRequests(res.data);
@@ -32,7 +32,7 @@ const BrowseRequests = () => {
     setActionLoading(request._id + '_accept');
     try {
       await axios.put(
-        `http://localhost:5000/api/users/skill-requests/${request._id}/accept`,
+        `${import.meta.env.VITE_API_URL}/api/users/skill-requests/${request._id}/accept`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -50,7 +50,7 @@ const BrowseRequests = () => {
     setActionLoading(requestId + '_reject');
     try {
       await axios.put(
-        `http://localhost:5000/api/users/skill-requests/${requestId}/reject`,
+        `${import.meta.env.VITE_API_URL}/api/users/skill-requests/${requestId}/reject`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );

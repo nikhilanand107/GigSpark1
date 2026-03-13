@@ -27,10 +27,10 @@ const TutorDashboard = () => {
       try {
         const headers = { Authorization: `Bearer ${token}` };
         const [profileRes, statsRes, sessionsRes, acceptedRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/users/profile', { headers }),
-          axios.get('http://localhost:5000/api/users/tutor-stats', { headers }),
-          axios.get('http://localhost:5000/api/sessions', { headers }),
-          axios.get('http://localhost:5000/api/users/tutor-accepted-requests', { headers })
+          axios.get(`${import.meta.env.VITE_API_URL}/api/users/profile`, { headers }),
+          axios.get(`${import.meta.env.VITE_API_URL}/api/users/tutor-stats`, { headers }),
+          axios.get(`${import.meta.env.VITE_API_URL}/api/sessions`, { headers }),
+          axios.get(`${import.meta.env.VITE_API_URL}/api/users/tutor-accepted-requests`, { headers })
         ]);
         
         setVideoUrl(profileRes.data.demoVideo);
@@ -49,7 +49,7 @@ const TutorDashboard = () => {
       
       // Auto-refresh when payment is released
       if (!socketRef.current) {
-        socketRef.current = io('http://localhost:5000', { transports: ['websocket'] });
+        socketRef.current = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', { transports: ['websocket'] });
         socketRef.current.on('payment_released', (data) => {
           if (data.tutorId === user?._id || data.tutorId === user?.id) {
             fetchData();
@@ -77,7 +77,7 @@ const TutorDashboard = () => {
 
     setUploading(true);
     try {
-      const res = await axios.post('http://localhost:5000/api/users/video', formData, {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/users/video`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           Authorization: `Bearer ${token}`

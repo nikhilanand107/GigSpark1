@@ -18,7 +18,7 @@ const TutorProfile = () => {
 
   const fetchProfile = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/users/profile', {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = res.data;
@@ -43,7 +43,7 @@ const TutorProfile = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await axios.put('http://localhost:5000/api/users/profile', {
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/users/profile`, {
         ...profile,
         skills: profile.skills.split(',').map(s => s.trim()).filter(Boolean),
       }, {

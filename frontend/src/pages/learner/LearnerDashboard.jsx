@@ -22,16 +22,17 @@ const LearnerDashboard = () => {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [reviewing, setReviewing] = useState(false);
   const [reviewError, setReviewError] = useState('');
+  const [tutors, setTutors] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const headers = { Authorization: `Bearer ${token}` };
         const [statsRes, requestsRes, acceptedRes, tutorsRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/users/learner-stats', { headers }),
-          axios.get('http://localhost:5000/api/users/my-requests', { headers }),
-          axios.get('http://localhost:5000/api/users/accepted-requests', { headers }),
-          axios.get('http://localhost:5000/api/users/tutors', { headers })
+          axios.get(`${import.meta.env.VITE_API_URL}/api/users/learner-stats`, { headers }),
+          axios.get(`${import.meta.env.VITE_API_URL}/api/users/my-requests`, { headers }),
+          axios.get(`${import.meta.env.VITE_API_URL}/api/users/accepted-requests`, { headers }),
+          axios.get(`${import.meta.env.VITE_API_URL}/api/users/tutors`, { headers })
         ]);
         
         setStats(statsRes.data);
@@ -62,7 +63,7 @@ const LearnerDashboard = () => {
     setReviewError('');
     try {
       const { data } = await axios.post(
-        `http://localhost:5000/api/video-review/${requestId}/review`,
+        `${import.meta.env.VITE_API_URL}/api/video-review/${requestId}/review`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` }

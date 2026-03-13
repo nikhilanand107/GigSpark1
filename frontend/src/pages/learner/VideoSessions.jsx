@@ -6,7 +6,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import AgoraRTC from 'agora-rtc-sdk-ng';
 
-const SOCKET_URL = 'http://localhost:5000';
+const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const AGORA_APP_ID = '9474adec4dbc415bac9980a3a5beae89';
 
 // Proper Agora video player — uses useEffect to call play() after DOM mount

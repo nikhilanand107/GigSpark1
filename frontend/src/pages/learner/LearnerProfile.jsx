@@ -18,7 +18,7 @@ const LearnerProfile = () => {
   useEffect(() => {
     const fetchRequests = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/users/my-requests', {
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/my-requests`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setRequests(res.data);
@@ -34,7 +34,7 @@ const LearnerProfile = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await axios.put('http://localhost:5000/api/users/profile', profile, {
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/users/profile`, profile, {
         headers: { Authorization: `Bearer ${token}` }
       });
     } catch (err) {

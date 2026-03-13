@@ -16,7 +16,7 @@ const FindTutor = () => {
   useEffect(() => {
     const fetchTutors = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/users/accepted-requests', {
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/accepted-requests`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         // Transform accepted requests into a displayable format
@@ -44,10 +44,10 @@ const FindTutor = () => {
       setModalLoading(true);
       try {
         const [profileRes, reviewsRes] = await Promise.all([
-          axios.get(`http://localhost:5000/api/users/tutor/${selectedTutor._id}`, {
+          axios.get(`${import.meta.env.VITE_API_URL}/api/users/tutor/${selectedTutor._id}`, {
             headers: { Authorization: `Bearer ${token}` }
           }),
-          axios.get(`http://localhost:5000/api/reviews/${selectedTutor._id}`, {
+          axios.get(`${import.meta.env.VITE_API_URL}/api/reviews/${selectedTutor._id}`, {
             headers: { Authorization: `Bearer ${token}` }
           })
         ]);

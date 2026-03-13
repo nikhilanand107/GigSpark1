@@ -5,7 +5,7 @@ import Navbar from '../../layout/Navbar';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 
-const SOCKET_URL = 'http://localhost:5000';
+const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const RatingPage = () => {
   const { tutorId } = useParams();

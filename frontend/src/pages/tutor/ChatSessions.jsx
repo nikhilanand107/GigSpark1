@@ -7,7 +7,7 @@ import { io } from 'socket.io-client';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
-const SOCKET_URL = 'http://localhost:5000';
+const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const AGORA_APP_ID = '9474adec4dbc415bac9980a3a5beae89';
 
 const agoraClient = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });

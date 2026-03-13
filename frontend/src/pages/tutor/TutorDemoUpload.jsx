@@ -44,7 +44,7 @@ const TutorDemoUpload = () => {
 
     try {
       await axios.post(
-        `http://localhost:5000/api/users/skill-requests/${requestId}/demo-video`,
+        `${import.meta.env.VITE_API_URL}/api/users/skill-requests/${requestId}/demo-video`,
         formData,
         {
           headers: {

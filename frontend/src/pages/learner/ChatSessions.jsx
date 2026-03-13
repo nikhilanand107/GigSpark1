@@ -7,7 +7,7 @@ import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
-const SOCKET_URL = 'http://localhost:5000';
+const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const AGORA_APP_ID = '9474adec4dbc415bac9980a3a5beae89';
 const RAZORPAY_KEY = 'rzp_test_SPmp7NV9xRxWb8';
 

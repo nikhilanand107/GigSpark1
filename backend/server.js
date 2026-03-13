@@ -11,7 +11,12 @@ dotenv.config();
 connectDB();
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: "https://gigspark.vercel.app",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+
 app.use(express.json());
 
 // Routes
@@ -28,8 +33,8 @@ app.use('/api/video-review', require('./routes/videoReviewRoutes'));
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: '*',
-    methods: ['GET', 'POST'],
+    origin: "https://gigspark.vercel.app",
+    methods: ["GET", "POST"],
   },
 });
 app.set('socketio', io);
@@ -69,7 +74,7 @@ io.on('connection', (socket) => {
     io.to(data.requestId).emit('session_completion_declined', data);
   });
 
-  socket.on('disconnect', () => {});
+  socket.on('disconnect', () => { });
 });
 
 // Export io so controllers can use it if needed
