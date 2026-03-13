@@ -1,0 +1,32 @@
+# Environment variables
+.env
+backend/.env
+ai_service/.env
+
+# Node modules
+node_modules/
+
+# Python virtual environment
+venv/
+ai_service/venv/
+
+# Logs
+*.log
+debug.log
+error.log
+error2.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Build folders
+dist/
+build/
+
+# VS Code
+.vscode/
