@@ -14,7 +14,8 @@ exports.initiatePayment = async (req, res) => {
     const order = await razorpay.orders.create(options);
     res.json(order);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('[Razorpay Error]', JSON.stringify(err));
+    res.status(500).json({ message: err.error?.description || err.message || 'Razorpay error' });
   }
 };
 

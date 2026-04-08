@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { Component } from 'react';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import TutorDashboard from './pages/tutor/TutorDashboard';
@@ -18,20 +19,44 @@ import LearnerProfile from './pages/learner/LearnerProfile';
 import RatingPage from './pages/learner/RatingPage';
 import './index.css';
 
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, info) {
+    console.error('App ErrorBoundary caught:', error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'sans-serif', gap: 16 }}>
+          <h2 style={{ color: '#ef4444', fontWeight: 900 }}>Something went wrong</h2>
+          <p style={{ color: '#6b7280', fontSize: 14 }}>{this.state.error?.message || 'Unexpected error occurred'}</p>
+          <button
+            onClick={() => { this.setState({ hasError: false, error: null }); window.location.href = '/'; }}
+            style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 24px', fontWeight: 900, cursor: 'pointer', fontSize: 13 }}
+          >
+            Go to Home
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const ProtectedRoute = ({ children, role }) => {
   const { user } = useAuth();
-  
-  // If no user object, redirect to login
   if (!user) return <Navigate to="/login" replace />;
-  
-  // Normalize roles to lowercase for comparison to avoid 'Learner' vs 'learner' issues
   const userRole = user.role?.toLowerCase();
   const requiredRole = role?.toLowerCase();
-  
   if (requiredRole && userRole !== requiredRole) {
     return <Navigate to="/login" replace />;
   }
-  
   return children;
 };
 
@@ -39,7 +64,6 @@ function AppRoutes() {
   const { user } = useAuth();
   return (
     <Routes>
-      {/* Always show sign-in page at root */}
       <Route path="/" element={<Login />} />
       <Route path="/login" element={
         user ? (
@@ -72,13 +96,13 @@ function AppRoutes() {
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </ErrorBoundary>
     </Router>
   );
 }
 
 export default App;
-
-

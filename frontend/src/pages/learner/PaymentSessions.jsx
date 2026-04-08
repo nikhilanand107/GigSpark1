@@ -54,7 +54,7 @@ const PaymentSessions = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const options = {
-        key: 'rzp_test_SPmp7NV9xRxWb8',
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SLaVU5IcTNsqkc',
         amount: orderRes.data.amount,
         currency: orderRes.data.currency || 'INR',
         name: 'GigSpark',

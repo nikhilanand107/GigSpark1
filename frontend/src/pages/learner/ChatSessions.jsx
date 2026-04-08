@@ -9,7 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 
 const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const AGORA_APP_ID = '9474adec4dbc415bac9980a3a5beae89';
-const RAZORPAY_KEY = 'rzp_test_SPmp7NV9xRxWb8';
+const RAZORPAY_KEY = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_Saz4PM5BR2s7DH';
 
 const agoraClient = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
 
