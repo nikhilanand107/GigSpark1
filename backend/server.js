@@ -12,7 +12,12 @@ connectDB();
 
 const app = express();
 app.use(cors({
-  origin: ["https://gigspark.vercel.app", "http://localhost:5173"],
+  origin: [
+    "https://gigspark.vercel.app", 
+    "https://gig-spark1.vercel.app", 
+    "http://localhost:5173",
+    /^https:\/\/.*\.vercel\.app$/
+  ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
@@ -33,7 +38,12 @@ app.use('/api/video-review', require('./routes/videoReviewRoutes'));
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: ["https://gigspark.vercel.app", "http://localhost:5173"],
+    origin: [
+      "https://gigspark.vercel.app", 
+      "https://gig-spark1.vercel.app", 
+      "http://localhost:5173",
+      /^https:\/\/.*\.vercel\.app$/
+    ],
     methods: ["GET", "POST"],
     credentials: true
   },
