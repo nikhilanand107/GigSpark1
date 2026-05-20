@@ -8,7 +8,9 @@ node_modules/
 
 # Python virtual environment
 venv/
+.venv/
 ai_service/venv/
+ai_service/.venv/
 
 # Logs
 *.log

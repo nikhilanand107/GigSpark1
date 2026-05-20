@@ -13,8 +13,10 @@ exports.reviewDemoVideo = async (req, res) => {
       return res.status(400).json({ message: 'No demo video linked to this request' });
     }
 
-    // Call the Flask AI microservice running on port 5001
-    const flaskServiceUrl = 'http://localhost:5001/api/review-video';
+    // Call the Flask AI microservice
+    const flaskServiceUrl = process.env.AI_SERVICE_URL 
+      ? `${process.env.AI_SERVICE_URL}/api/review-video`
+      : 'http://localhost:5001/api/review-video';
     
     const aiResponse = await fetch(flaskServiceUrl, {
       method: 'POST',

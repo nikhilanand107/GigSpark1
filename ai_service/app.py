@@ -8,13 +8,16 @@ from moviepy.editor import VideoFileClip
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
+import google.generativeai as genai
 
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
 
 def extract_audio(video_path, audio_path):
     try:
@@ -76,15 +79,8 @@ def transcribe_audio(audio_path) -> str:
         return ""
 
 def get_ai_review(transcript, skill_name):
-    if not OPENROUTER_API_KEY:
-        raise ValueError("OPENROUTER_API_KEY is missing")
-
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "HTTP-Referer": "http://localhost:3000",
-        "X-Title": "GigSpark AI Review",
-        "Content-Type": "application/json"
-    }
+    if not GEMINI_API_KEY:
+        raise ValueError("GEMINI_API_KEY is missing")
 
     prompt = f"""
     You are an expert tutor evaluator. Review the following transcript from a tutor's demo video showcasing their skill: "{skill_name}".
@@ -99,43 +95,33 @@ def get_ai_review(transcript, skill_name):
     If the transcript is empty or says there's no intelligible speech, give a rating of 6 and mention that the video had no clear speech to evaluate.
     
     Return the response EXACTLY as a JSON object with this structure:
-    {{
-        "rating": number (between 6 and 10),
-        "review": "string"
-    }}
+    {{"rating": <number between 6 and 10>, "review": "<string>"}}
+    Do NOT wrap it in markdown or code blocks. Return raw JSON only.
     """
 
-    data = {
-        "model": "deepseek/deepseek-chat",
-        "messages": [
-            {"role": "system", "content": "You output strict JSON."},
-            {"role": "user", "content": prompt}
-        ],
-        "response_format": {"type": "json_object"},
-        "max_tokens": 500
-    }
+    print("Sending request to Gemini...")
+    model = genai.GenerativeModel(
+        model_name="gemini-2.5-flash",
+        generation_config=genai.GenerationConfig(
+            response_mime_type="application/json",
+            max_output_tokens=500,
+        )
+    )
+    response = model.generate_content(prompt)
+    result_text = response.text.strip()
+    print(f"Gemini response: {result_text}")
 
-    print("Sending request to OpenRouter...")
-    response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data)
-    
-    if not response.ok:
-        print(f"OpenRouter error: {response.text}")
-        response.raise_for_status()
-    
-    result_text = response.json()['choices'][0]['message']['content']
-    print(f"OpenRouter response: {result_text}")
-    
     try:
-        # Strip code blocks if deepseek added them
+        # Strip code blocks just in case
         if result_text.startswith("```json"):
             result_text = result_text.split("```json")[1].split("```")[0].strip()
         elif result_text.startswith("```"):
             result_text = result_text.split("```")[1].split("```")[0].strip()
-            
+
         return json.loads(result_text)
     except json.JSONDecodeError:
         print(f"Failed to parse JSON: {result_text}")
-        return {"rating": 7, "review": "The AI provided a review, but the format could not be processed natively. " + result_text[:50]}
+        return {"rating": 7, "review": "The AI provided a review, but the format could not be processed. " + result_text[:100]}
 
 @app.route('/api/review-video', methods=['POST'])
 def review_video():
@@ -153,7 +139,10 @@ def review_video():
 
     try:
         print(f"\n[{session_id}] Downloading video from {video_url}...")
-        response = requests.get(video_url, stream=True)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        response = requests.get(video_url, stream=True, headers=headers)
         response.raise_for_status()
         with open(video_path, 'wb') as f:
             for chunk in response.iter_content(chunk_size=8192):
@@ -171,7 +160,7 @@ def review_video():
 
         print(f"[{session_id}] Transcript: {str(transcript)[:100]}...")
 
-        print(f"[{session_id}] Requesting DeepSeek AI review...")
+        print(f"[{session_id}] Requesting Gemini AI review...")
         review_data = get_ai_review(transcript, skill_name)
         
         print(f"[{session_id}] Completed. Rating: {review_data.get('rating')}")

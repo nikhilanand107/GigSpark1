@@ -75,7 +75,7 @@ const VideoSessions = () => {
       agoraClientRef.current = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
     }
 
-    socketRef.current = io(SOCKET_URL, { transports: ['websocket'] });
+    socketRef.current = io(SOCKET_URL);
     
     // Listen for tutor's session completion request
     socketRef.current.on('session_completion_requested', ({ requestId }) => {

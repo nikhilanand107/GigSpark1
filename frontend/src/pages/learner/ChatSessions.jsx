@@ -76,7 +76,7 @@ const LearnerChatSessions = () => {
   const socketRef = useRef(null);
 
   useEffect(() => {
-    socketRef.current = io(SOCKET_URL, { transports: ['websocket'] });
+    socketRef.current = io(SOCKET_URL);
     return () => socketRef.current?.disconnect();
   }, []);
 
