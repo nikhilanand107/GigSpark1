@@ -94,7 +94,10 @@ def transcribe_audio(audio_path) -> str:
         print(f"Error transcribing audio: {e}")
         return ""
 
-from typing import TypedDict
+try:
+    from typing import TypedDict
+except ImportError:
+    from typing_extensions import TypedDict
 import time
 
 class VideoReviewSchema(TypedDict):
