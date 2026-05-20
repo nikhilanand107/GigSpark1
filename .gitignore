@@ -32,3 +32,9 @@ build/
 
 # VS Code
 .vscode/
+
+.agents/
+.opencode/
+graphify-out/
+venv/
+node_modules/
