@@ -19,6 +19,26 @@ CORS(app)
 def index():
     return jsonify({"status": "online", "message": "GigSpark AI Service is running"}), 200
 
+@app.route('/api/test-ffmpeg', methods=['GET'])
+def test_ffmpeg():
+    import subprocess
+    import imageio_ffmpeg
+    try:
+        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+        res = subprocess.run([ffmpeg_exe, "-version"], capture_output=True, text=True, timeout=10)
+        return jsonify({
+            "success": True,
+            "ffmpeg_exe": ffmpeg_exe,
+            "stdout": res.stdout[:500],
+            "stderr": res.stderr[:500],
+            "returncode": res.returncode
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
