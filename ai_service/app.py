@@ -42,8 +42,14 @@ def extract_audio(video_path, audio_path):
 
 import pydub # type: ignore
 from pydub import AudioSegment
+import imageio_ffmpeg
 import math
 from concurrent.futures import ThreadPoolExecutor
+
+try:
+    AudioSegment.converter = imageio_ffmpeg.get_ffmpeg_exe()
+except Exception as e:
+    print(f"Warning: Failed to set imageio-ffmpeg converter path: {e}")
 
 def transcribe_audio_chunk(i, audio_path, chunk, recognizer):
     temp_chunk_path = f"{audio_path}_chunk_{i}.wav"
@@ -99,10 +105,27 @@ try:
 except ImportError:
     from typing_extensions import TypedDict
 import time
+import subprocess
 
 class VideoReviewSchema(TypedDict):
     rating: int
     review: str
+
+def convert_mp3_to_wav(mp3_path, wav_path):
+    try:
+        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+        print(f"Converting MP3 to WAV using ffmpeg: {ffmpeg_exe}...")
+        cmd = [
+            ffmpeg_exe,
+            '-y',
+            '-i', mp3_path,
+            wav_path
+        ]
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        return True
+    except Exception as e:
+        print(f"Error converting MP3 to WAV: {e}")
+        return False
 
 def get_ai_review(transcript, skill_name):
     if not GEMINI_API_KEY:
@@ -164,16 +187,17 @@ def review_video():
     temp_dir = tempfile.gettempdir()
     session_id = str(uuid.uuid4())
     video_path = os.path.join(temp_dir, f"{session_id}.mp4")
-    audio_path = os.path.join(temp_dir, f"{session_id}.wav")
 
     is_cloudinary = "res.cloudinary.com" in video_url
+    audio_ext = ".mp3" if is_cloudinary else ".wav"
+    audio_path = os.path.join(temp_dir, f"{session_id}{audio_ext}")
 
     try:
         if is_cloudinary:
-            # Dynamically request the audio-only WAV format from Cloudinary
+            # Dynamically request the audio-only MP3 format from Cloudinary
             base_url, _ = os.path.splitext(video_url)
-            audio_url = base_url + ".wav"
-            print(f"[{session_id}] Cloudinary URL detected. Downloading WAV audio directly from {audio_url}...")
+            audio_url = base_url + ".mp3"
+            print(f"[{session_id}] Cloudinary URL detected. Downloading MP3 audio directly from {audio_url}...")
             
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -183,6 +207,12 @@ def review_video():
             with open(audio_path, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
+
+            # Dynamically convert MP3 to WAV
+            wav_path = os.path.join(temp_dir, f"{session_id}.wav")
+            if not convert_mp3_to_wav(audio_path, wav_path):
+                return jsonify({"error": "Failed to convert downloaded MP3 to WAV"}), 500
+            audio_path = wav_path
         else:
             print(f"\n[{session_id}] Downloading video from {video_url}...")
             headers = {
@@ -222,16 +252,13 @@ def review_video():
         print(f"Pipeline error: {e}")
         return jsonify({"error": str(e)}), 500
     finally:
-        if os.path.exists(video_path):
-            try:
-                os.remove(video_path)
-            except:
-                pass
-        if os.path.exists(audio_path):
-            try:
-                os.remove(audio_path)
-            except:
-                pass
+        for ext in [".mp4", ".mp3", ".wav"]:
+            p = os.path.join(temp_dir, f"{session_id}{ext}")
+            if os.path.exists(p):
+                try:
+                    os.remove(p)
+                except:
+                    pass
 
 if __name__ == '__main__':
     port = int(os.getenv('FLASK_PORT', 5001))
