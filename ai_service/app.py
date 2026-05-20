@@ -43,6 +43,27 @@ def extract_audio(video_path, audio_path):
 import pydub # type: ignore
 from pydub import AudioSegment
 import math
+from concurrent.futures import ThreadPoolExecutor
+
+def transcribe_audio_chunk(i, audio_path, chunk, recognizer):
+    temp_chunk_path = f"{audio_path}_chunk_{i}.wav"
+    try:
+        chunk.export(temp_chunk_path, format="wav")
+        with sr.AudioFile(temp_chunk_path) as source:
+            audio_data = recognizer.record(source)
+            text = str(recognizer.recognize_google(audio_data))
+            return i, text
+    except sr.UnknownValueError:
+        return i, ""
+    except Exception as e:
+        print(f"Error in chunk {i}: {e}")
+        return i, ""
+    finally:
+        if os.path.exists(temp_chunk_path):
+            try:
+                os.remove(temp_chunk_path)
+            except:
+                pass
 
 def transcribe_audio(audio_path) -> str:
     recognizer = sr.Recognizer()
@@ -52,35 +73,33 @@ def transcribe_audio(audio_path) -> str:
         chunk_length_ms = 60000 # 60 seconds
         chunks_count = math.ceil(len(audio) / chunk_length_ms)
         
-        full_transcript = []
         print(f"Audio duration: {source_duration:.2f}s. Splitting into {chunks_count} chunks...")
-
+        
+        chunks = []
         for i in range(chunks_count):
             start_ms = i * chunk_length_ms
             end_ms = min((i + 1) * chunk_length_ms, len(audio))
-            chunk = audio[start_ms:end_ms]
+            chunks.append((i, audio[start_ms:end_ms]))
             
-            # Save chunk to temp file
-            temp_chunk_path = f"{audio_path}_chunk_{i}.wav"
-            chunk.export(temp_chunk_path, format="wav")
+        with ThreadPoolExecutor(max_workers=min(chunks_count, 5)) as executor:
+            futures = [executor.submit(transcribe_audio_chunk, i, audio_path, chunk, recognizer) for i, chunk in chunks]
+            results = [f.result() for f in futures]
             
-            try:
-                with sr.AudioFile(temp_chunk_path) as source:
-                    audio_data = recognizer.record(source)
-                    text = str(recognizer.recognize_google(audio_data))
-                    full_transcript.append(text)
-            except sr.UnknownValueError:
-                pass # No speech in this chunk
-            except Exception as e:
-                print(f"Error in chunk {i}: {e}")
-            finally:
-                if os.path.exists(temp_chunk_path):
-                    os.remove(temp_chunk_path)
+        # Sort results by chunk index to maintain correct order
+        results.sort(key=lambda x: x[0])
+        full_transcript = [text for i, text in results if text.strip()]
         
         return " ".join(full_transcript)
     except Exception as e:
         print(f"Error transcribing audio: {e}")
         return ""
+
+from typing import TypedDict
+import time
+
+class VideoReviewSchema(TypedDict):
+    rating: int
+    review: str
 
 def get_ai_review(transcript, skill_name):
     if not GEMINI_API_KEY:
@@ -97,35 +116,38 @@ def get_ai_review(transcript, skill_name):
     2. A short, constructive review (2-3 sentences max) for the learner who will book them.
     
     If the transcript is empty or says there's no intelligible speech, give a rating of 6 and mention that the video had no clear speech to evaluate.
-    
-    Return the response EXACTLY as a JSON object with this structure:
-    {{"rating": <number between 6 and 10>, "review": "<string>"}}
-    Do NOT wrap it in markdown or code blocks. Return raw JSON only.
     """
 
-    print("Sending request to Gemini...")
-    model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash",
-        generation_config=genai.GenerationConfig(
-            response_mime_type="application/json",
-            max_output_tokens=500,
-        )
-    )
-    response = model.generate_content(prompt)
-    result_text = response.text.strip()
-    print(f"Gemini response: {result_text}")
-
-    try:
-        # Strip code blocks just in case
-        if result_text.startswith("```json"):
-            result_text = result_text.split("```json")[1].split("```")[0].strip()
-        elif result_text.startswith("```"):
-            result_text = result_text.split("```")[1].split("```")[0].strip()
-
-        return json.loads(result_text)
-    except json.JSONDecodeError:
-        print(f"Failed to parse JSON: {result_text}")
-        return {"rating": 7, "review": "The AI provided a review, but the format could not be processed. " + result_text[:100]}
+    model = genai.GenerativeModel("gemini-2.5-flash")
+    
+    max_retries = 3
+    base_delay = 5
+    
+    for attempt in range(max_retries):
+        try:
+            print(f"Sending request to Gemini (attempt {attempt + 1}/{max_retries})...")
+            response = model.generate_content(
+                prompt,
+                generation_config=genai.GenerationConfig(
+                    response_mime_type="application/json",
+                    response_schema=VideoReviewSchema,
+                )
+            )
+            result_text = response.text.strip()
+            print(f"Gemini response: {result_text}")
+            
+            return json.loads(result_text)
+        except Exception as e:
+            print(f"Gemini API error (attempt {attempt + 1}): {e}")
+            if attempt == max_retries - 1:
+                return {
+                    "rating": 7,
+                    "review": "The AI service is currently busy. Please try again shortly."
+                }
+            # Exponential backoff
+            wait_time = base_delay * (2 ** attempt)
+            print(f"Waiting {wait_time}s before retrying...")
+            time.sleep(wait_time)
 
 @app.route('/api/review-video', methods=['POST'])
 def review_video():
@@ -141,20 +163,37 @@ def review_video():
     video_path = os.path.join(temp_dir, f"{session_id}.mp4")
     audio_path = os.path.join(temp_dir, f"{session_id}.wav")
 
-    try:
-        print(f"\n[{session_id}] Downloading video from {video_url}...")
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-        response = requests.get(video_url, stream=True, headers=headers)
-        response.raise_for_status()
-        with open(video_path, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
+    is_cloudinary = "res.cloudinary.com" in video_url
 
-        print(f"[{session_id}] Extracting audio as WAV...")
-        if not extract_audio(video_path, audio_path):
-             return jsonify({"error": "Failed to extract audio using moviepy"}), 500
+    try:
+        if is_cloudinary:
+            # Dynamically request the audio-only WAV format from Cloudinary
+            base_url, _ = os.path.splitext(video_url)
+            audio_url = base_url + ".wav"
+            print(f"[{session_id}] Cloudinary URL detected. Downloading WAV audio directly from {audio_url}...")
+            
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+            response = requests.get(audio_url, stream=True, headers=headers)
+            response.raise_for_status()
+            with open(audio_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+        else:
+            print(f"\n[{session_id}] Downloading video from {video_url}...")
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+            response = requests.get(video_url, stream=True, headers=headers)
+            response.raise_for_status()
+            with open(video_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+
+            print(f"[{session_id}] Extracting audio as WAV...")
+            if not extract_audio(video_path, audio_path):
+                 return jsonify({"error": "Failed to extract audio using moviepy"}), 500
 
         print(f"[{session_id}] Transcribing audio...")
         transcript = transcribe_audio(audio_path)
