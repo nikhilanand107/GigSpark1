@@ -89,8 +89,28 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => { });
 });
 
+// Simple ping route to keep service awake
+app.get('/ping', (req, res) => {
+  res.status(200).send('pong');
+});
+
 // Export io so controllers can use it if needed
 module.exports = { io };
+
+// Self-ping mechanism to prevent Render sleep (every 14 minutes)
+const https = require('https');
+setInterval(() => {
+  const backendUrl = 'https://gigspark-backend.onrender.com/ping';
+  const aiServiceUrl = 'https://gigspark-ai-nikhil.onrender.com/';
+  
+  https.get(backendUrl, (res) => {
+    console.log(`[Self-Ping] Backend pinged: ${res.statusCode}`);
+  }).on('error', (err) => console.error(`[Self-Ping] Backend error: ${err.message}`));
+
+  https.get(aiServiceUrl, (res) => {
+    console.log(`[Self-Ping] AI Service pinged: ${res.statusCode}`);
+  }).on('error', (err) => console.error(`[Self-Ping] AI Service error: ${err.message}`));
+}, 14 * 60 * 1000); // 14 minutes
 
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => console.log(`Server running on port ${PORT}`));
